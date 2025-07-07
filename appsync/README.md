@@ -12,3 +12,11 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * `npx cdk deploy`  deploy this stack to your default AWS account/region
 * `npx cdk diff`    compare deployed stack with current state
 * `npx cdk synth`   emits the synthesized CloudFormation template
+
+// Run the API
+
+// curl -X POST \
+//   -H "Content-Type: application/json" \
+//   -H "x-api-key: <api key>" \
+//   -d '{"query":"query { hello }"}' \
+//   https://rak7nwjyrvhazkxyhiflypn55e.appsync-api.us-east-1.amazonaws.com/graphql
