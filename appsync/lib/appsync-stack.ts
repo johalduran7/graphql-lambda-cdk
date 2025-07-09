@@ -47,6 +47,17 @@ export class AppsyncStack extends cdk.Stack {
       fieldName: 'hello'
     });
 
+  lambdaDs.createResolver("GetUserResolver", {
+    typeName: "Query",
+    fieldName: "getUser",
+    requestMappingTemplate: appsync.MappingTemplate.fromString(`
+      {
+        "version": "2018-05-29",
+        "operation": "Invoke"
+      }
+    `),
+    responseMappingTemplate: appsync.MappingTemplate.lambdaResult()
+  });
 
     // Output the API URL and Key
     new cdk.CfnOutput(this, 'GraphQLAPIURL', {
@@ -59,10 +70,3 @@ export class AppsyncStack extends cdk.Stack {
   }
 }
 
-// Run the API
-
-// curl -X POST \
-//   -H "Content-Type: application/json" \
-//   -H "x-api-key: <api key>" \
-//   -d '{"query":"query { hello }"}' \
-//   https://rak7nwjyrvhazkxyhiflypn55e.appsync-api.us-east-1.amazonaws.com/graphql

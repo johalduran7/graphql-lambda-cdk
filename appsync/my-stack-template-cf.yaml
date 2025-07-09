@@ -1,0 +1,317 @@
+Resources:
+  MyAPI5C779B6E:
+    Type: AWS::AppSync::GraphQLApi
+    Properties:
+      AuthenticationType: API_KEY
+      Name: MyLambdaGraphqlAPI
+      XrayEnabled: true
+    Metadata:
+      aws:cdk:path: AppsyncStack/MyAPI/Resource
+  MyAPISchema057B2EB7:
+    Type: AWS::AppSync::GraphQLSchema
+    Properties:
+      ApiId:
+        Fn::GetAtt:
+          - MyAPI5C779B6E
+          - ApiId
+      Definition: |
+        type User {
+          id: ID!
+          name: String!
+          email: String!
+          registeredAt: String!
+        }
+
+        type Greeting {
+          message: String!
+          user: User
+        }
+
+        type Query {
+          hello(name: String!): Greeting
+          getUser(id: ID!): User
+        }
+    Metadata:
+      aws:cdk:path: AppsyncStack/MyAPI/Schema
+  MyAPIDefaultApiKey9E52D366:
+    Type: AWS::AppSync::ApiKey
+    Properties:
+      ApiId:
+        Fn::GetAtt:
+          - MyAPI5C779B6E
+          - ApiId
+      Expires: 1783556306
+    DependsOn:
+      - MyAPISchema057B2EB7
+    Metadata:
+      aws:cdk:path: AppsyncStack/MyAPI/DefaultApiKey
+  MyAPILambdaDatasourceServiceRole66C1822B:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: appsync.amazonaws.com
+        Version: "2012-10-17"
+    Metadata:
+      aws:cdk:path: AppsyncStack/MyAPI/LambdaDatasource/ServiceRole/Resource
+  MyAPILambdaDatasourceServiceRoleDefaultPolicyF7B8382D:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: lambda:InvokeFunction
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - HelloFunctionD909AE8C
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - HelloFunctionD909AE8C
+                        - Arn
+                    - :*
+        Version: "2012-10-17"
+      PolicyName: MyAPILambdaDatasourceServiceRoleDefaultPolicyF7B8382D
+      Roles:
+        - Ref: MyAPILambdaDatasourceServiceRole66C1822B
+    Metadata:
+      aws:cdk:path: AppsyncStack/MyAPI/LambdaDatasource/ServiceRole/DefaultPolicy/Resource
+  MyAPILambdaDatasourceF1CB313A:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId:
+        Fn::GetAtt:
+          - MyAPI5C779B6E
+          - ApiId
+      LambdaConfig:
+        LambdaFunctionArn:
+          Fn::GetAtt:
+            - HelloFunctionD909AE8C
+            - Arn
+      Name: LambdaDatasource
+      ServiceRoleArn:
+        Fn::GetAtt:
+          - MyAPILambdaDatasourceServiceRole66C1822B
+          - Arn
+      Type: AWS_LAMBDA
+    Metadata:
+      aws:cdk:path: AppsyncStack/MyAPI/LambdaDatasource/Resource
+  MyAPIresolverid8588F79D:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId:
+        Fn::GetAtt:
+          - MyAPI5C779B6E
+          - ApiId
+      DataSourceName: LambdaDatasource
+      FieldName: hello
+      Kind: UNIT
+      TypeName: Query
+    DependsOn:
+      - MyAPILambdaDatasourceF1CB313A
+      - MyAPISchema057B2EB7
+    Metadata:
+      aws:cdk:path: AppsyncStack/MyAPI/resolverid/Resource
+  MyAPIGetUserResolver9CF7376A:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId:
+        Fn::GetAtt:
+          - MyAPI5C779B6E
+          - ApiId
+      DataSourceName: LambdaDatasource
+      FieldName: getUser
+      Kind: UNIT
+      RequestMappingTemplate: "
+
+        \      {
+
+        \        \"version\": \"2018-05-29\",
+
+        \        \"operation\": \"Invoke\"
+
+        \      }
+
+        \    "
+      ResponseMappingTemplate: $util.toJson($ctx.result)
+      TypeName: Query
+    DependsOn:
+      - MyAPILambdaDatasourceF1CB313A
+      - MyAPISchema057B2EB7
+    Metadata:
+      aws:cdk:path: AppsyncStack/MyAPI/GetUserResolver/Resource
+  HelloFunctionServiceRole186F1BA8:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: AppsyncStack/HelloFunction/ServiceRole/Resource
+  HelloFunctionD909AE8C:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: 9e6e499cd938b4472b403a9b362ed881e2b77a9718ffcbfa2a366b04ece43cdb.zip
+      FunctionName: LambdaGraphqlIntegration
+      Handler: handler.handler
+      Role:
+        Fn::GetAtt:
+          - HelloFunctionServiceRole186F1BA8
+          - Arn
+      Runtime: nodejs18.x
+    DependsOn:
+      - HelloFunctionServiceRole186F1BA8
+    Metadata:
+      aws:cdk:path: AppsyncStack/HelloFunction/Resource
+      aws:asset:path: asset.9e6e499cd938b4472b403a9b362ed881e2b77a9718ffcbfa2a366b04ece43cdb
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  HelloFunctionLogGroupE0F3D6B5:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Join:
+          - ""
+          - - /aws/lambda/
+            - Ref: HelloFunctionD909AE8C
+      RetentionInDays: 731
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Metadata:
+      aws:cdk:path: AppsyncStack/HelloFunction/LogGroup/Resource
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Analytics: v2:deflate64:H4sIAAAAAAAA/51SwW7bMAz9lupYKFqWnJab03ZF0WDLklwGIwgYiXHUyJJmyW09wf8+SLazdAU2YCeJfOTTexQnbDKesPEVvLgRF6eRknsW1h74icKL2wWw1jWas3BfgT3+UJmVeSAaSiQzck0ocfyIJfQB1P5oKvkTvDT6xuiDLMgsEIEHqJXPLtGYf1O+aWzkzJYPu8e775HMykdsfrPgq5UVuvRU27aUvFbQ3GnYKxRk5qsaWxoICLFOkm7RohaoeUNmObkm23+gW3pz0Mnlt0Vm5UXUdcREliTRBZR7AbfgYW3qimOELqIVOqOesYrp4d5SCSULK6MwDwScq0sU8yb6spXUXFpQGeem1n6YZaqJDRnvBpZ8dyY2Zjl0LY2SyUVoO4veAz8+aCU1nrGz/7+C/62KkhI0FCgSp4yflIc3uSar+tp+0pGCdlAUcNa2MRF5J/l9Woi1B48lau9694m442ypSp/EwudaJ6V5IFWtvTxv7hG0UFj1ETdiAA59x5dhyzvigailbroD59A7lsWDuimb1/yEfg4O8y1VpnAsLExxX5na5oGo/voH41DRtmln4vKkWUSPNFGvPRRSF7H4a+1t7VuqjUD25D48T8bs4yc2vXpyUo56a2zVnb8AYJctlNcDAAA=
+    Metadata:
+      aws:cdk:path: AppsyncStack/CDKMetadata/Default
+    Condition: CDKMetadataAvailable
+Outputs:
+  GraphQLAPIURL:
+    Value:
+      Fn::GetAtt:
+        - MyAPI5C779B6E
+        - GraphQLUrl
+  GraphQLAPIKey:
+    Value:
+      Fn::GetAtt:
+        - MyAPIDefaultApiKey9E52D366
+        - ApiKey
+Conditions:
+  CDKMetadataAvailable:
+    Fn::Or:
+      - Fn::Or:
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - af-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-east-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-northeast-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-northeast-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-northeast-3
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-south-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-southeast-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-southeast-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-southeast-3
+      - Fn::Or:
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-southeast-4
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ca-central-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ca-west-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - cn-north-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - cn-northwest-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-central-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-central-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-north-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-south-2
+      - Fn::Or:
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-west-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-west-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-west-3
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - il-central-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - me-central-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - me-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - sa-east-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - us-east-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - us-east-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - us-west-1
+      - Fn::Equals:
+          - Ref: AWS::Region
+          - us-west-2
+
+

@@ -1,0 +1,16 @@
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  registeredAt: String!
+}
+
+type Greeting {
+  message: String!
+  user: User
+}
+
+type Query {
+  hello(name: String!): Greeting
+  getUser(id: ID!): User
+}

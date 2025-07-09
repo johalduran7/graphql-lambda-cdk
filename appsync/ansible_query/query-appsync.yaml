@@ -1,0 +1,40 @@
+---
+- name: Query AppSync GraphQL API using Ansible
+  hosts: localhost
+  gather_facts: false
+  vars:
+    appsync_url: "https://or2obs45g5fpddjweejqk5iy4i.appsync-api.us-east-1.amazonaws.com/graphql"
+    appsync_api_key: "da2-vczt2xfbibcyvdft4tkqkr5pe4"
+    graphql_query: |
+      query {
+        hello(name: "Alice") { 
+          message 
+          user 
+          { id name email registeredAt } 
+        }
+      }
+
+  tasks:
+    - name: Query GraphQL endpoint
+      uri:
+        url: "{{ appsync_url }}"
+        method: POST
+        headers:
+          Content-Type: "application/json"
+          x-api-key: "{{ appsync_api_key }}"
+        body_format: json
+        body:
+          query: "{{ graphql_query }}"
+        return_content: yes
+        status_code: 200
+      register: graphql_response
+
+    - name: Print the GraphQL response
+      debug:
+        var: graphql_response.json
+
+# curl -s -X POST \
+#   -H "Content-Type: application/json" \
+#   -H "x-api-key: da2-vczt2xfbibcyvdft4tkqkr5pe4" \
+#   -d '{"query":"query { hello(name: \"Alice\") { message user { id name email registeredAt } } }"}' \
+#   https://or2obs45g5fpddjweejqk5iy4i.appsync-api.us-east-1.amazonaws.com/graphql | jq -r
